@@ -98,12 +98,17 @@ fun SearchScreen(
         }
 
         // Results list
-        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f)   //важно
+        ) {
             items(state.results) { city ->
                 CityRow(city = city, onClick = { onCitySelected(city) })
                 Spacer(Modifier.height(10.dp))
             }
         }
+
     }
 }
 
