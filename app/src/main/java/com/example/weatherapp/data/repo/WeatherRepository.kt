@@ -1,7 +1,10 @@
 package com.example.weatherapp.data.repo
 
 import com.example.weatherapp.data.local.AppDataStore
-import com.example.weatherapp.data.remote.*
+import com.example.weatherapp.data.remote.ForecastApi
+import com.example.weatherapp.data.remote.ForecastResponse
+import com.example.weatherapp.data.remote.GeoCity
+import com.example.weatherapp.data.remote.GeocodingApi
 import kotlinx.coroutines.flow.first
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -27,21 +30,37 @@ class WeatherRepository(
     private val geocoding: GeocodingApi,
     private val forecastApi: ForecastApi
 ) {
-
     private val json = Json {
         ignoreUnknownKeys = true
         explicitNulls = false
     }
 
+    private fun cleanInput(s: String): String =
+        s.lowercase()
+            .replace(Regex("[^a-zа-яё\\s-]"), " ")
+            .replace(Regex("\\s+"), " ")
+            .trim()
+
     suspend fun searchCities(query: String): RepoResult<List<GeoCity>> {
-        val q = query.trim()
+        val raw = query.trim()
+        if (raw.isBlank()) return RepoResult.Error("Enter a city name.")
+
+        val q = cleanInput(raw)
         if (q.isBlank()) return RepoResult.Error("Enter a city name.")
 
         return try {
-            val res = geocoding.search(name = q)
-            val list = res.results ?: emptyList()
-            if (list.isEmpty()) RepoResult.Error("City not found.")
-            else RepoResult.Success(list, isOffline = false)
+            val res1 = geocoding.search(name = q)
+            val list1 = res1.results ?: emptyList()
+            if (list1.isNotEmpty()) return RepoResult.Success(list1, isOffline = false)
+
+            val longest = q.split(" ").maxByOrNull { it.length }.orEmpty()
+            if (longest.length >= 3 && longest != q) {
+                val res2 = geocoding.search(name = longest)
+                val list2 = res2.results ?: emptyList()
+                if (list2.isNotEmpty()) return RepoResult.Success(list2, isOffline = false)
+            }
+
+            RepoResult.Error("City not found.")
         } catch (e: IOException) {
             RepoResult.Error("No internet connection.")
         } catch (e: HttpException) {
@@ -55,8 +74,6 @@ class WeatherRepository(
     }
 
     suspend fun getWeather(city: GeoCity, units: String): RepoResult<CachedBundle> {
-
-        // 1) Пытаемся получить данные из сети
         try {
             val res = forecastApi.forecast(
                 lat = city.latitude,
@@ -75,20 +92,11 @@ class WeatherRepository(
                 updated = updated
             )
 
-            return RepoResult.Success(
-                CachedBundle(city, res, updated),
-                isOffline = false
-            )
-
-        } catch (e: IOException) {
-            // нет интернета → fallback
-        } catch (e: HttpException) {
-            // ошибка API → fallback
-        } catch (e: Exception) {
-            // fallback
+            return RepoResult.Success(CachedBundle(city, res, updated), isOffline = false)
+        } catch (_: Exception) {
+            // fallback to cache
         }
 
-        // 2) Пробуем кэш
         val cached = readCache()
         return if (cached != null) {
             RepoResult.Success(cached, isOffline = true)
@@ -96,6 +104,9 @@ class WeatherRepository(
             RepoResult.Error("Network error and no cached data.")
         }
     }
+
+    // ✅ NEW: public access to cache for Search screen
+    suspend fun getCachedBundle(): CachedBundle? = readCache()
 
     private suspend fun readCache(): CachedBundle? {
         val cityJson = store.cachedCityJson.first()

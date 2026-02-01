@@ -1,36 +1,16 @@
 package com.example.weatherapp.ui.screens
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.example.weatherapp.data.remote.GeoCity
 import com.example.weatherapp.ui.vm.SearchViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SearchScreen(
     vm: SearchViewModel,
@@ -39,58 +19,89 @@ fun SearchScreen(
 ) {
     val state by vm.state.collectAsState()
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Search City") },
-                actions = { TextButton(onClick = onOpenSettings) { Text("Settings") } }
-            )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+    ) {
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            Text("Search City", style = MaterialTheme.typography.headlineSmall)
+            TextButton(onClick = onOpenSettings) { Text("Settings") }
         }
-    ) { pad ->
-        Column(
-            modifier = Modifier
-                .padding(pad)
-                .padding(16.dp)
-                .fillMaxSize()
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedTextField(
+            value = state.query,
+            onValueChange = { vm.onQueryChange(it) },
+            label = { Text("City name") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Button(
+            onClick = { vm.onSearch() },
+            modifier = Modifier.fillMaxWidth()
         ) {
-            OutlinedTextField(
-                value = state.query,
-                onValueChange = vm::setQuery,
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("City name") },
-                singleLine = true
-            )
+            Text("Search")
+        }
 
-            Spacer(Modifier.height(10.dp))
+        Spacer(Modifier.height(12.dp))
 
-            Row(Modifier.fillMaxWidth()) {
-                Button(
-                    onClick = vm::search,
-                    enabled = !state.loading,
-                    modifier = Modifier.weight(1f)
-                ) { Text("Search") }
+        if (state.isLoading) {
+            CircularProgressIndicator()
+            Spacer(Modifier.height(12.dp))
+        }
 
-                Spacer(Modifier.width(10.dp))
+        state.error?.let {
+            Text(it, color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(12.dp))
+        }
 
-                if (state.loading) {
-                    CircularProgressIndicator(modifier = Modifier)
+        // ✅ Offline cache block: показываем кнопку "Open cached weather"
+        val showOfflineCache =
+            (state.error?.contains("No internet", ignoreCase = true) == true) && state.cached != null
+
+        if (showOfflineCache) {
+            Text("OFFLINE (cached)", color = MaterialTheme.colorScheme.error)
+            Spacer(Modifier.height(8.dp))
+
+            Card {
+                Column(Modifier.padding(16.dp)) {
+                    Text(state.cached!!.city.name, style = MaterialTheme.typography.titleMedium)
+
+                    val subtitle = listOfNotNull(
+                        state.cached!!.city.admin1,
+                        state.cached!!.city.country
+                    ).joinToString(", ")
+
+                    if (subtitle.isNotBlank()) Text(subtitle)
+
+                    Spacer(Modifier.height(6.dp))
+                    Text("Last update: ${state.cached!!.updatedIso}")
                 }
-            }
-
-            state.error?.let {
-                Spacer(Modifier.height(10.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
             }
 
             Spacer(Modifier.height(12.dp))
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+            Button(
+                onClick = { onCitySelected(state.cached!!.city) },
+                modifier = Modifier.fillMaxWidth()
             ) {
-                items(state.results) { city ->
-                    CityRow(city = city, onClick = { onCitySelected(city) })
-                }
+                Text("Open cached weather")
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
+
+        // Results list
+        LazyColumn(modifier = Modifier.fillMaxWidth()) {
+            items(state.results) { city ->
+                CityRow(city = city, onClick = { onCitySelected(city) })
+                Spacer(Modifier.height(10.dp))
             }
         }
     }
@@ -101,13 +112,16 @@ private fun CityRow(city: GeoCity, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick)
+            .clickable { onClick() }
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(16.dp)) {
             Text(city.name, style = MaterialTheme.typography.titleMedium)
-            val sub = listOfNotNull(city.admin1, city.country).joinToString(", ")
-            if (sub.isNotBlank()) Text(sub, style = MaterialTheme.typography.bodyMedium)
-            Text("lat=${city.latitude}, lon=${city.longitude}", style = MaterialTheme.typography.bodySmall)
+
+            val subtitle = listOfNotNull(city.admin1, city.country).joinToString(", ")
+            if (subtitle.isNotBlank()) Text(subtitle)
+
+            Spacer(Modifier.height(4.dp))
+            Text("lat=${city.latitude}, lon=${city.longitude}")
         }
     }
 }

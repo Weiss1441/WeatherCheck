@@ -3,46 +3,65 @@ package com.example.weatherapp.ui.vm
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.weatherapp.data.remote.GeoCity
+import com.example.weatherapp.data.repo.CachedBundle
 import com.example.weatherapp.data.repo.RepoResult
 import com.example.weatherapp.data.repo.WeatherRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 data class SearchUiState(
     val query: String = "",
-    val loading: Boolean = false,
+    val isLoading: Boolean = false,
     val error: String? = null,
-    val results: List<GeoCity> = emptyList()
+    val results: List<GeoCity> = emptyList(),
+    val cached: CachedBundle? = null
 )
 
-class SearchViewModel(private val repo: WeatherRepository) : ViewModel() {
+class SearchViewModel(
+    private val repository: WeatherRepository
+) : ViewModel() {
+
     private val _state = MutableStateFlow(SearchUiState())
     val state: StateFlow<SearchUiState> = _state
 
-    fun setQuery(q: String) {
-        _state.value = _state.value.copy(query = q, error = null)
+    init {
+        loadCache()
     }
 
-    fun search() {
-        val q = _state.value.query.trim()
-        if (q.isBlank()) {
-            _state.value = _state.value.copy(error = "Enter a city name.")
-            return
-        }
+    fun onQueryChange(text: String) {
+        _state.update { it.copy(query = text) }
+    }
+
+    fun onSearch() {
+        val q = _state.value.query
+        _state.update { it.copy(isLoading = true, error = null, results = emptyList()) }
 
         viewModelScope.launch {
-            _state.value = _state.value.copy(loading = true, error = null, results = emptyList())
-            when (val res = repo.searchCities(q)) {
-                is RepoResult.Success -> _state.value = _state.value.copy(
-                    loading = false,
-                    results = res.data
-                )
-                is RepoResult.Error -> _state.value = _state.value.copy(
-                    loading = false,
-                    error = res.message
-                )
+            when (val r = repository.searchCities(q)) {
+                is RepoResult.Success -> {
+                    _state.update { it.copy(isLoading = false, results = r.data, error = null) }
+                }
+                is RepoResult.Error -> {
+                    _state.update { it.copy(isLoading = false, error = r.message, results = emptyList()) }
+                    // если нет интернета — покажем кэш
+                    if (r.message.contains("No internet", ignoreCase = true)) {
+                        loadCache()
+                    }
+                }
             }
+        }
+    }
+
+    fun refreshCache() {
+        loadCache()
+    }
+
+    private fun loadCache() {
+        viewModelScope.launch {
+            val cached = repository.getCachedBundle()
+            _state.update { it.copy(cached = cached) }
         }
     }
 }
