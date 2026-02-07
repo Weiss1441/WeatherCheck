@@ -2,7 +2,6 @@ package com.example.weatherapp
 
 import android.net.Uri
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -25,13 +24,6 @@ import com.example.weatherapp.ui.screens.WeatherScreen
 import com.example.weatherapp.ui.vm.*
 import kotlinx.serialization.json.Json
 
-private const val TAG_FAV = "FB_FAV_TEST"
-
-
-private fun favoritesWriteTest() {
-
-    Log.d(TAG_FAV, "favoritesWriteTest() is disabled")
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
