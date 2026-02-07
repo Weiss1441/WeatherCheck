@@ -5,7 +5,7 @@ Assignments: 7, 8 — Data & Networking + Firebase
 Platform: Android (Kotlin)
 UI: Jetpack Compose
 Overview
-
+https://youtu.be/y2BK7abu1Dk
 Overview
 
 -This project is a simple Weather Application that allows the user to:
