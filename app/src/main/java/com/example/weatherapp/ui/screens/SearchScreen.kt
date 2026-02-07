@@ -15,6 +15,7 @@ import com.example.weatherapp.ui.vm.SearchViewModel
 fun SearchScreen(
     vm: SearchViewModel,
     onOpenSettings: () -> Unit,
+    onOpenFavorites: () -> Unit,
     onCitySelected: (GeoCity) -> Unit
 ) {
     val state by vm.state.collectAsState()
@@ -27,7 +28,11 @@ fun SearchScreen(
 
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Search City", style = MaterialTheme.typography.headlineSmall)
-            TextButton(onClick = onOpenSettings) { Text("Settings") }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = onOpenFavorites) { Text("Favorites") }
+                TextButton(onClick = onOpenSettings) { Text("Settings") }
+            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -61,7 +66,6 @@ fun SearchScreen(
             Spacer(Modifier.height(12.dp))
         }
 
-        // ✅ Offline cache block: показываем кнопку "Open cached weather"
         val showOfflineCache =
             (state.error?.contains("No internet", ignoreCase = true) == true) && state.cached != null
 
@@ -97,18 +101,16 @@ fun SearchScreen(
             Spacer(Modifier.height(16.dp))
         }
 
-        // Results list
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f)   //важно
+                .weight(1f)
         ) {
             items(state.results) { city ->
                 CityRow(city = city, onClick = { onCitySelected(city) })
                 Spacer(Modifier.height(10.dp))
             }
         }
-
     }
 }
 

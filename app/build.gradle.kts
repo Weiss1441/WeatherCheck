@@ -1,9 +1,10 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    // JSON serialization
     alias(libs.plugins.kotlin.serialization)
+    id("com.google.gms.google-services")
 }
+
 
 android {
     namespace = "com.example.weatherapp"
@@ -70,7 +71,16 @@ dependencies {
     // DataStore
     implementation(libs.androidx.datastore.preferences)
 
-    // Tests (твои)
+    dependencies {
+        // Firebase BoM (стабильно)
+        implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
+
+        // Firebase modules
+        implementation("com.google.firebase:firebase-auth")
+        implementation("com.google.firebase:firebase-database")
+    }
+
+    // Tests
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

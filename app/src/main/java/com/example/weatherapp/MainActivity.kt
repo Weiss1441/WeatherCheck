@@ -2,6 +2,7 @@ package com.example.weatherapp
 
 import android.net.Uri
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
@@ -12,19 +13,32 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.*
 import androidx.navigation.navArgument
+import com.example.weatherapp.data.firebase.FavoritesRepository
 import com.example.weatherapp.data.local.AppDataStore
 import com.example.weatherapp.data.remote.GeoCity
 import com.example.weatherapp.data.remote.Network
 import com.example.weatherapp.data.repo.WeatherRepository
+import com.example.weatherapp.ui.screens.FavoritesScreen
 import com.example.weatherapp.ui.screens.SearchScreen
 import com.example.weatherapp.ui.screens.SettingsScreen
 import com.example.weatherapp.ui.screens.WeatherScreen
 import com.example.weatherapp.ui.vm.*
 import kotlinx.serialization.json.Json
 
+private const val TAG_FAV = "FB_FAV_TEST"
+
+
+private fun favoritesWriteTest() {
+
+    Log.d(TAG_FAV, "favoritesWriteTest() is disabled")
+}
+
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+
+
         setContent { AppRoot() }
     }
 }
@@ -33,6 +47,7 @@ private object Routes {
     const val SEARCH = "search"
     const val SETTINGS = "settings"
     const val WEATHER = "weather"
+    const val FAVORITES = "favorites"
 }
 
 @Composable
@@ -58,11 +73,13 @@ private fun AppRoot() {
                 SearchScreen(
                     vm = searchVm,
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) },
+                    onOpenFavorites = { nav.navigate(Routes.FAVORITES) },
                     onCitySelected = { city ->
                         val json = Json.encodeToString(GeoCity.serializer(), city)
                         nav.navigate("${Routes.WEATHER}?city=${Uri.encode(json)}")
                     }
                 )
+
             }
 
             composable(Routes.SETTINGS) {
@@ -89,6 +106,17 @@ private fun AppRoot() {
                     vm = weatherVm,
                     onBack = { nav.popBackStack() },
                     onOpenSettings = { nav.navigate(Routes.SETTINGS) }
+                )
+            }
+
+            composable(Routes.FAVORITES) {
+                val favVm: FavoritesViewModel = viewModel(
+                    factory = factory { FavoritesViewModel(FavoritesRepository()) }
+                )
+
+                FavoritesScreen(
+                    vm = favVm,
+                    onBack = { nav.popBackStack() }
                 )
             }
         }

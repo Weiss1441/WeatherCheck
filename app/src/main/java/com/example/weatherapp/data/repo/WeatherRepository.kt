@@ -94,7 +94,6 @@ class WeatherRepository(
 
             return RepoResult.Success(CachedBundle(city, res, updated), isOffline = false)
         } catch (_: Exception) {
-            // fallback to cache
         }
 
         val cached = readCache()
@@ -105,7 +104,6 @@ class WeatherRepository(
         }
     }
 
-    // ✅ NEW: public access to cache for Search screen
     suspend fun getCachedBundle(): CachedBundle? = readCache()
 
     private suspend fun readCache(): CachedBundle? {
